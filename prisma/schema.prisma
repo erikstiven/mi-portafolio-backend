@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Proyecto {
+  id          Int        @id @default(autoincrement())
+  titulo      String
+  descripcion String
+  tecnologias String
+  imagenUrl   String
+  demoUrl     String?
+  githubUrl   String?
+  destacado   Boolean    @default(false)
+  categoria   Categoria? @relation(fields: [categoriaId], references: [id])
+  categoriaId Int?
+  createdAt   DateTime   @default(now())
+}
+
+model Categoria {
+  id        Int        @id @default(autoincrement())
+  nombre    String     @unique
+  proyectos Proyecto[]
+}
+
+model Servicio {
+  id          Int      @id @default(autoincrement())
+  nombre      String
+  descripcion String
+  precio      Float?
+}
+
+model RedSocial {
+  id        Int     @id @default(autoincrement())
+  nombre    String
+  url       String
+  activo    Boolean @default(true)
+}
