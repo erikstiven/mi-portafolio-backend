@@ -1,18 +1,23 @@
-import { Router } from 'express'
+import { Router } from 'express';
+import multer from 'multer';
 import {
   getProyectos,
   createProyecto,
   updateProyecto,
-  deleteProyecto
-} from '../controller/proyectoController'
+  deleteProyecto,
+  uploadImagenProyecto
+} from '../controller/proyectoController';
+import { verificarToken } from '../middleware/authMiddleware';
 
-import { verificarToken } from '../middleware/authMiddleware'
+const router = Router();
+const upload = multer({ storage: multer.memoryStorage() }); // Necesario para acceder al buffer
 
-const router = Router()
+router.get('/', getProyectos);
+router.post('/', verificarToken, createProyecto);
+router.put('/:id', verificarToken, updateProyecto);
+router.delete('/:id', verificarToken, deleteProyecto);
 
-router.get('/', verificarToken, getProyectos)
-router.post('/', verificarToken, createProyecto)
-router.put('/:id', verificarToken, updateProyecto)
-router.delete('/:id', verificarToken, deleteProyecto)
+// 🔥 Esta es la nueva ruta para subir imagen
+router.post('/upload', verificarToken, upload.single('file'), uploadImagenProyecto);
 
-export default router
+export default router;

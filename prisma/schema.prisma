@@ -18,6 +18,7 @@ model Proyecto {
   destacado   Boolean    @default(false)
   categoria   Categoria? @relation(fields: [categoriaId], references: [id])
   categoriaId Int?
+  nivel       String     @default("Fullstack") 
   createdAt   DateTime   @default(now())
 }
 
@@ -35,8 +36,23 @@ model Servicio {
 }
 
 model RedSocial {
-  id        Int     @id @default(autoincrement())
-  nombre    String
-  url       String
-  activo    Boolean @default(true)
+  id     Int     @id @default(autoincrement())
+  nombre String
+  url    String
+  icono  String   
+  activo Boolean  @default(true)
 }
+
+model Experiencia {
+  id           Int      @id @default(autoincrement())
+  puesto       String
+  empresa      String
+  fechaInicio  DateTime
+  fechaFin     DateTime?
+  actualmente  Boolean  @default(false)
+  descripcion  String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+
