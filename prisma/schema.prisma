@@ -8,19 +8,22 @@ datasource db {
 }
 
 model Proyecto {
-  id          Int        @id @default(autoincrement())
-  titulo      String
-  descripcion String
-  tecnologias String
-  imagenUrl   String
-  demoUrl     String?
-  githubUrl   String?
-  destacado   Boolean    @default(false)
-  categoria   Categoria? @relation(fields: [categoriaId], references: [id])
-  categoriaId Int?
-  nivel       String     @default("Fullstack") 
-  createdAt   DateTime   @default(now())
+  id              Int       @id @default(autoincrement())
+  titulo          String
+  descripcion     String
+  tecnologias     String
+  imagenUrl       String?
+  imagenPublicId  String?   
+  demoUrl         String?
+  githubUrl       String?
+  destacado       Boolean   @default(false)
+  nivel           String?
+  categoriaId     Int
+  categoria       Categoria @relation(fields: [categoriaId], references: [id])
+  createdAt       DateTime  @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 }
+
 
 model Categoria {
   id        Int        @id @default(autoincrement())
@@ -56,3 +59,27 @@ model Experiencia {
 }
 
 
+model Perfil {
+  id               Int      @id @default(1)
+
+  nombreCompleto   String
+  inicialesLogo    String
+  telefono         String
+
+  heroTitulo       String
+  heroDescripcion  String
+  heroCtaTexto     String?
+  heroCtaUrl       String?
+
+  sobreDescripcion String
+
+  cvUrl            String?
+  cvPublicId       String?
+  fotoUrl          String?
+  fotoPublicId     String?
+  logoUrl          String?
+  logoPublicId     String?
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
