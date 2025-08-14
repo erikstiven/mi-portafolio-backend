@@ -1,17 +1,9 @@
-import { Router } from 'express'
-import {
-  getCategorias,
-  createCategoria,
-  updateCategoria,
-  deleteCategoria
-} from '../controller/categoriaController'
-import { verificarToken } from '../middleware/authMiddleware'
+// routes/categoriaRoutes.ts
+import { Router } from 'express';
+import { listarCategorias } from '../controller/categoriaController';
 
-const router = Router()
+const router = Router();
 
-router.get('/', getCategorias)
-router.post('/', verificarToken, createCategoria)
-router.put('/:id', verificarToken, updateCategoria)
-router.delete('/:id', verificarToken, deleteCategoria)
+router.get('/', listarCategorias);
 
-export default router
+export default router;
