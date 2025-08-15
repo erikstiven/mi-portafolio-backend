@@ -1,94 +1,130 @@
 import prisma from '../prisma/client';
-import { uploadBuffer, destroyAsset } from '../lib/cloudinary';
+import { UploadApiResponse, v2 as cloudinary } from 'cloudinary';
 
-type UploadResult = { url: string; public_id: string };
+// Configura Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
-export async function processPerfilUpsert(opts: {
-  // Campos de texto requeridos
-  nombreCompleto: string;
-  inicialesLogo: string;
-  telefono: string;
-  heroTitulo: string;
-  heroDescripcion: string;
-  sobreDescripcion: string;
-  // Opcionales
-  heroCtaTexto?: string | null;
-  heroCtaUrl?: string | null;
+interface ProcessPerfilUpsertParams {
+  perfilId: number;
+  nombreCompleto?: string;
+  inicialesLogo?: string;
+  telefono?: string;
+  tituloHero?: string;
+  perfilTecnicoHero?: string;
+  descripcionHero?: string;
+  descripcionUnoSobreMi?: string;
+  descripcionDosSobreMi?: string;
 
-  // Buffers opcionales (multer) – si llegan, se reemplazan assets
-  fotoBuffer?: Buffer;
-  logoBuffer?: Buffer;
+  fotoHeroBuffer?: Buffer;
+  fotoSobreMiBuffer?: Buffer;
   cvBuffer?: Buffer;
-}) {
-  // 1) Subimos primero (si hay buffers). Guardamos para “rollback” si falla BD.
-  const newFoto: UploadResult | undefined = opts.fotoBuffer
-    ? await uploadBuffer(opts.fotoBuffer, 'portfolio/perfil/foto', 'image')
-    : undefined;
+}
 
-  const newLogo: UploadResult | undefined = opts.logoBuffer
-    ? await uploadBuffer(opts.logoBuffer, 'portfolio/perfil/logo', 'image')
-    : undefined;
+/**
+ * Helper para subir buffers a Cloudinary y devolver UploadApiResponse
+ */
+const uploadBufferToCloudinary = (
+  buffer: Buffer,
+  folder: string,
+  publicId: string,
+  resourceType: 'image' | 'raw' = 'image'
+): Promise<UploadApiResponse> => {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder,
+        public_id: publicId,
+        overwrite: true,
+        resource_type: resourceType,
+      },
+      (error, result) => {
+        if (error) return reject(error);
+        if (!result) return reject(new Error('No se obtuvo respuesta de Cloudinary'));
+        resolve(result);
+      }
+    );
+    stream.end(buffer);
+  });
+};
 
-  const newCv: UploadResult | undefined = opts.cvBuffer
-    ? await uploadBuffer(opts.cvBuffer, 'portfolio/perfil/cv', 'raw')
-    : undefined;
+/**
+ * Sube archivos a Cloudinary y actualiza el perfil
+ */
+export const processPerfilUpsert = async (params: ProcessPerfilUpsertParams) => {
+  const {
+    perfilId,
+    nombreCompleto,
+    inicialesLogo,
+    telefono,
+    tituloHero,
+    perfilTecnicoHero,
+    descripcionHero,
+    descripcionUnoSobreMi,
+    descripcionDosSobreMi,
+    fotoHeroBuffer,
+    fotoSobreMiBuffer,
+    cvBuffer,
+  } = params;
 
-  // 2) Leemos existente para saber qué borrar luego
-  const existing = await prisma.perfil.findUnique({ where: { id: 1 } });
-  const oldPublics = {
-    cv: existing?.cvPublicId,
-    foto: existing?.fotoPublicId,
-    logo: existing?.logoPublicId,
+  const dataToUpdate: any = {
+    nombreCompleto,
+    inicialesLogo,
+    telefono,
+    tituloHero,
+    perfilTecnicoHero,
+    descripcionHero,
+    descripcionUnoSobreMi,
+    descripcionDosSobreMi,
   };
 
-  try {
-    // 3) Upsert transaccional con los nuevos campos
-    const perfil = await prisma.perfil.upsert({
-      where: { id: 1 },
-      update: {
-        nombreCompleto: opts.nombreCompleto,
-        inicialesLogo: opts.inicialesLogo,
-        telefono: opts.telefono,
-        heroTitulo: opts.heroTitulo,
-        heroDescripcion: opts.heroDescripcion,
-        heroCtaTexto: opts.heroCtaTexto ?? null,
-        heroCtaUrl: opts.heroCtaUrl ?? null,
-        sobreDescripcion: opts.sobreDescripcion,
-        ...(newCv   ? { cvUrl: newCv.url,     cvPublicId: newCv.public_id } : {}),
-        ...(newFoto ? { fotoUrl: newFoto.url, fotoPublicId: newFoto.public_id } : {}),
-        ...(newLogo ? { logoUrl: newLogo.url, logoPublicId: newLogo.public_id } : {}),
-      },
-      create: {
-        id: 1,
-        nombreCompleto: opts.nombreCompleto,
-        inicialesLogo: opts.inicialesLogo,
-        telefono: opts.telefono,
-        heroTitulo: opts.heroTitulo,
-        heroDescripcion: opts.heroDescripcion,
-        heroCtaTexto: opts.heroCtaTexto ?? null,
-        heroCtaUrl: opts.heroCtaUrl ?? null,
-        sobreDescripcion: opts.sobreDescripcion,
-        ...(newCv   ? { cvUrl: newCv.url,     cvPublicId: newCv.public_id } : {}),
-        ...(newFoto ? { fotoUrl: newFoto.url, fotoPublicId: newFoto.public_id } : {}),
-        ...(newLogo ? { logoUrl: newLogo.url, logoPublicId: newLogo.public_id } : {}),
-      },
-    });
-
-    // 4) Limpieza asíncrona de assets antiguos solo si se reemplazaron
-    Promise.allSettled([
-      newCv   && oldPublics.cv   ? destroyAsset(oldPublics.cv,   'raw')   : undefined,
-      newFoto && oldPublics.foto ? destroyAsset(oldPublics.foto, 'image') : undefined,
-      newLogo && oldPublics.logo ? destroyAsset(oldPublics.logo, 'image') : undefined,
-    ]);
-
-    return perfil;
-  } catch (err) {
-    // Si falló BD, limpiamos los nuevos para no dejar basura
-    Promise.allSettled([
-      newCv   ? destroyAsset(newCv.public_id,   'raw')   : undefined,
-      newFoto ? destroyAsset(newFoto.public_id, 'image') : undefined,
-      newLogo ? destroyAsset(newLogo.public_id, 'image') : undefined,
-    ]);
-    throw err;
+  // --- Subida de archivos a Cloudinary ---
+  if (fotoHeroBuffer) {
+    const uploaded = await uploadBufferToCloudinary(
+      fotoHeroBuffer,
+      'perfil',
+      `fotoHero_${perfilId}`,
+      'image'
+    );
+    dataToUpdate.fotoHeroUrl = uploaded.secure_url;
+    dataToUpdate.fotoHeroPublicId = uploaded.public_id;
   }
-}
+
+  if (fotoSobreMiBuffer) {
+    const uploaded = await uploadBufferToCloudinary(
+      fotoSobreMiBuffer,
+      'perfil',
+      `fotoSobreMi_${perfilId}`,
+      'image'
+    );
+    dataToUpdate.fotoSobreMiUrl = uploaded.secure_url;
+    dataToUpdate.fotoSobreMiPublicId = uploaded.public_id;
+  }
+
+  if (cvBuffer) {
+    const uploaded = await uploadBufferToCloudinary(
+      cvBuffer,
+      'perfil',
+      `cv_${perfilId}`,
+      'raw'
+    );
+    dataToUpdate.cvUrl = uploaded.secure_url;
+    dataToUpdate.cvPublicId = uploaded.public_id;
+  }
+
+  // --- Filtrar undefined ---
+  Object.keys(dataToUpdate).forEach(
+    (key) => dataToUpdate[key] === undefined && delete dataToUpdate[key]
+  );
+
+  // Actualizar perfil en Prisma
+  const perfilActualizado = await prisma.perfil.update({
+    where: { id: perfilId },
+    data: dataToUpdate,
+  });
+
+  return perfilActualizado;
+};

@@ -60,26 +60,27 @@ model Experiencia {
 
 
 model Perfil {
-  id               Int      @id @default(1)
+  id                     Int      @id @default(1)
+  nombreCompleto         String
+  inicialesLogo          String
+  telefono               String
+  tituloHero             String   @default("defaultTitle") // Valor por defecto
+  perfilTecnicoHero      String   @default("defaultProfile") // Valor por defecto
+  descripcionHero        String?  @default("defaultDescription") // Valor por defecto
 
-  nombreCompleto   String
-  inicialesLogo    String
-  telefono         String
+  descripcionUnoSobreMi String   // Obligatoria
+  descripcionDosSobreMi String   // Obligatoria
 
-  heroTitulo       String
-  heroDescripcion  String
-  heroCtaTexto     String?
-  heroCtaUrl       String?
+  cvUrl                 String?
+  cvPublicId            String?
+  fotoHeroUrl           String?
+  fotoHeroPublicId      String?
+  fotoSobreMiUrl        String?
+  fotoSobreMiPublicId   String?
 
-  sobreDescripcion String
-
-  cvUrl            String?
-  cvPublicId       String?
-  fotoUrl          String?
-  fotoPublicId     String?
-  logoUrl          String?
-  logoPublicId     String?
-
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 }
+
+
+

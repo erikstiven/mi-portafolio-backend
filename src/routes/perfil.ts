@@ -1,26 +1,32 @@
+// src/routes/perfil.ts
 import { Router } from 'express';
-import { getPerfil, updatePerfil, uploadPerfilAssets } from '../controller/perfilController';
 import { verificarToken } from '../middleware/authMiddleware';
 import { upload } from '../middleware/upload';
+import { getPerfil, createPerfil, updatePerfil, deletePerfil } from '../controller/perfilController';
 
 const router = Router();
+const FILE_FIELDS = [
+  { name: 'fotoHero', maxCount: 1 },
+  { name: 'fotoSobreMi', maxCount: 1 },
+  { name: 'cv', maxCount: 1 },
+];
 
-// Público
 router.get('/', getPerfil);
 
-// Privado (JSON puro)
-router.put('/', verificarToken, updatePerfil);
-
-// Privado (multipart form-data: textos + archivos)
 router.post(
-  '/assets',
+  '/',
   verificarToken,
-  upload.fields([
-    { name: 'foto', maxCount: 1 },
-    { name: 'logo', maxCount: 1 },
-    { name: 'cv',   maxCount: 1 },
-  ]),
-  uploadPerfilAssets
+  upload.fields(FILE_FIELDS),
+  createPerfil
 );
+
+router.put(
+  '/',
+  verificarToken,
+  upload.fields(FILE_FIELDS),
+  updatePerfil
+);
+
+router.delete('/', verificarToken, deletePerfil);
 
 export default router;
